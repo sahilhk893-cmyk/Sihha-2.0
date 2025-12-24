@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Sihha Healthcare Chatbot</title>
+
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #eef2f3;
+      padding: 20px;
+    }
+    .app {
+      max-width: 750px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .chat-box {
+      border: 1px solid #ccc;
+      height: 350px;
+      overflow-y: auto;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .bot { color: #0a3d62; }
+    .user { text-align: right; color: #1e3799; }
+    input { width: 65%; padding: 8px; }
+    button { padding: 8px 12px; margin-left: 5px; cursor: pointer; }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+  </style>
+</head>
+
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+
+const diseases = [
+  {key:"cold", en:"Common Cold – Sneezing, runny nose. Rest and fluids.",
+   hi:"सामान्य सर्दी – छींक, नाक बहना। आराम करें।"},
+  {key:"flu", en:"Influenza – Fever and body pain.",
+   hi:"फ्लू – बुखार और शरीर दर्द।"},
+  {key:"covid", en:"COVID-19 – Fever, cough, breathing difficulty.",
+   hi:"कोविड-19 – बुखार, खांसी, सांस की समस्या।"},
+  {key:"hiv", en:"HIV/AIDS – Weak immune system. Long-term treatment required.",
+   hi:"एचआईवी/एड्स – कमजोर प्रतिरक्षा प्रणाली।"},
+  {key:"hepatitis", en:"Hepatitis – Liver infection.",
+   hi:"हेपेटाइटिस – लिवर संक्रमण।"},
+  {key:"measles", en:"Measles – Fever with rash.",
+   hi:"खसरा – बुखार और दाने।"},
+  {key:"chickenpox", en:"Chickenpox – Itchy blisters.",
+   hi:"चिकनपॉक्स – खुजली वाले फोड़े।"},
+  {key:"dengue", en:"Dengue – High fever, joint pain.",
+   hi:"डेंगू – तेज बुखार, जोड़ों में दर्द।"},
+  {key:"tb", en:"Tuberculosis – Long-term cough.",
+   hi:"टीबी – लंबे समय तक खांसी।"},
+  {key:"cholera", en:"Cholera – Severe diarrhea.",
+   hi:"हैजा – गंभीर दस्त।"},
+  {key:"typhoid", en:"Typhoid – High fever and weakness.",
+   hi:"टाइफाइड – तेज बुखार, कमजोरी।"},
+  {key:"strep", en:"Strep throat – Painful throat infection.",
+   hi:"गले का संक्रमण।"},
+  {key:"uti", en:"UTI – Burning during urination.",
+   hi:"मूत्र संक्रमण – पेशाब में जलन।"},
+  {key:"ringworm", en:"Ringworm – Fungal skin infection.",
+   hi:"दाद – फंगल संक्रमण।"},
+  {key:"candidiasis", en:"Candidiasis – Yeast infection.",
+   hi:"कैंडिडायसिस – यीस्ट संक्रमण।"},
+  {key:"malaria", en:"Malaria – Mosquito-borne fever.",
+   hi:"मलेरिया – मच्छर से फैलता है।"},
+  {key:"giardia", en:"Giardiasis – Intestinal parasite.",
+   hi:"जियार्डियासिस – आंत संक्रमण।"},
+  {key:"worms", en:"Hookworms / Pinworms – Intestinal worms.",
+   hi:"आंतों के कीड़े।"},
+  {
+    key:"asthma",
+    en:"Asthma – Breathing problem. Inhaler video: https://www.youtube.com/watch?v=F2bUo3q3K5w",
+    hi:"दमा – सांस की समस्या। इनहेलर वीडियो: https://www.youtube.com/watch?v=F2bUo3q3K5w"
+  },
+  {
+    key:"heart",
+    en:"Heart Attack – Chest pain. CPR video: https://www.youtube.com/watch?v=O92KL1mw77c",
+    hi:"हार्ट अटैक – सीने में दर्द। सीपीआर वीडियो: https://www.youtube.com/watch?v=O92KL1mw77c"
+  },
+  {
+    key:"pregnancy",
+    en:"Pregnancy Emergency – Bleeding or pain. Video: https://www.youtube.com/watch?v=K5R1d0pU6Q8",
+    hi:"गर्भावस्था आपातकाल – रक्तस्राव या दर्द। वीडियो: https://www.youtube.com/watch?v=K5R1d0pU6Q8"
+  }
+];
+
+function speak(text, lang){
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = lang === "hi" ? "hi-IN" : "en-US";
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(u);
+}
+
+function App(){
+  const [messages,setMessages] = React.useState([
+    {from:"bot", text:"Hello! I am Sihha, your healthcare assistant."}
+  ]);
+  const [input,setInput] = React.useState("");
+  const [lang,setLang] = React.useState("en");
+  const recRef = React.useRef(null);
+
+  React.useEffect(()=>{
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR) return;
+    const r = new SR();
+    r.lang = lang === "hi" ? "hi-IN" : "en-US";
+    r.onresult = function(e){
+      setInput(e.results[0][0].transcript);
+    };
+    recRef.current = r;
+  },[lang]);
+
+  function send(){
+    if(!input) return;
+
+    setMessages(m => m.concat({from:"user", text:input}));
+
+    const q = input.toLowerCase();
+    const d = diseases.find(x => q.includes(x.key));
+
+    const reply = d
+      ? (lang === "en" ? d.en : d.hi)
+      : (lang === "en"
+          ? "Please consult a doctor."
+          : "कृपया डॉक्टर से संपर्क करें।");
+
+    setMessages(m => m.concat({from:"bot", text:reply}));
+    speak(reply, lang);
+    setInput("");
+  }
+
+  function startMic(){
+    if(recRef.current){
+      recRef.current.start();
+    }
+  }
+
+  return (
+    <div className="app">
+      <div className="header">
+        <h2>Sihha Healthcare Chatbot</h2>
+        <button onClick={() => setLang(lang === "en" ? "hi" : "en")}>
+          {lang === "en" ? "Hindi" : "English"}
+        </button>
+      </div>
+
+      <div className="chat-box">
+        {messages.map((m,i) => (
+          <p key={i} className={m.from}>{m.from}: {m.text}</p>
+        ))}
+      </div>
+
+      <input
+        value={input}
+        onChange={e => setInput(e.target.value)}
+        placeholder={lang === "en" ? "Type your problem" : "अपनी समस्या लिखें"}
+      />
+
+      <button onClick={send}>Send</button>
+      <button onClick={startMic}>🎤 Mic</button>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
+</script>
+</body>
+</html>
